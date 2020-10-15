@@ -32,8 +32,7 @@ operator then `df1['colA']` is just as difficult to write as `F.col('colA')`;
 * Assigning an abstract expression like `F.col('prod_status') == 'Delivered'` to a variable makes it reusable
 for multiple dataframes, while `df.prod_status == 'Delivered'` is always bound to df
 
-Fortunately, a convoluted expression with `F.col()` is usually not required. The only exceptions
-are `F.lower`, `F.upper`, ... [and these](https://github.com/apache/spark/pull/23882).
+Fortunately, a convoluted expression with `F.col()` is usually not required. [Prior to Spark 3.0](https://issues.apache.org/jira/browse/SPARK-26979), this was necessary for some functions, like `F.upper()`, but since then the API has become much more uniform.
 
 ### Caveats
 
@@ -198,7 +197,7 @@ provides information that already exists in the code. For example:
 ```python
 # bad
 
-# Go through each column, remove 1000 because milis and cast to timestamp
+# Go through each column, divide by 1000 because milis and cast to timestamp
 cols = ['start_date', 'delivery_date']
 for c in cols:
     df = df.withColumn(c, F.from_unixtime(F.col(c) / 1000).cast(TimestampType()))
@@ -392,7 +391,7 @@ Chains of more than 3 statement are prime candidates to factor into separate, we
 The rationale for why we've set these limits on chaining:
 
 1. Differentiation between PySpark code and SQL code. Chaining is something that goes against most, if not all, other Python styling. You don’t chain in Python, you assign.
-2. Discourage the creation of large single code blocs. These would often make more sense extracted as a named function.
+2. Discourage the creation of large single code blocks. These would often make more sense extracted as a named function.
 3. It doesn’t need to be all or nothing, but a maximum of five lines of chaining balances practicality with legibility.
 4. If you are using an IDE, it makes it easier to use automatic extractions or do code movements (i.e: `cmd + shift + up` in pycharm)
 5. Large chains are hard to read and maintain, particularly if chains are nested.
