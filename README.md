@@ -197,7 +197,7 @@ provides information that already exists in the code. For example:
 ```python
 # bad
 
-# Go through each column, divide by 1000 because milis and cast to timestamp
+# Go through each column, divide by 1000 because millis and cast to timestamp
 cols = ['start_date', 'delivery_date']
 for c in cols:
     df = df.withColumn(c, F.from_unixtime(F.col(c) / 1000).cast(TimestampType()))
@@ -209,8 +209,8 @@ Instead of leaving comments that only describe the logic you wrote, aim to leave
 # good
 
 # The consumer of this dataset expects a timestamp instead of a date, and we need
-# to ajust the time by 1000 because the original datasource is storing these as milis
-# even though the documentation says it's a actually a date.
+# to adjust the time by 1000 because the original datasource is storing these as millis
+# even though the documentation says it's actually a date.
 cols = ['start_date', 'delivery_date']
 for c in cols:
     df = df.withColumn(c, F.from_unixtime(F.col(c) / 1000).cast(TimestampType()))
