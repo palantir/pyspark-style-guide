@@ -10,7 +10,7 @@ Beyond PySpark specifics, the general practices of clean code are important in P
 
 # Prefer implicit column selection to direct access, except for disambiguation
 
-```
+```python
 # bad
 df = df.select(F.lower(df1.colA), F.upper(df2.colB))
 
