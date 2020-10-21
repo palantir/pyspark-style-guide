@@ -16,23 +16,23 @@ df = df.select(F.lower(df1.colA), F.upper(df2.colB))
 
 # good
 df = df.select(F.lower(F.col('colA')), F.upper(F.col('colB')))
+
+# better - since Spark 3.0
+df = df.select(F.lower('colA'), F.upper('colB'))
 ```
 
-The preferred option is more complicated, longer, and polluted - and correct. While typically it is best to avoid using F.col() altogether, there are certain cases where using it, or the alternative explicit selection, is unavoidable. There is, however, good reason to prefer the second example over the first one.
+In most situations, it's best to avoid the first and second styles and just reference the column by its name, using a string, as in the third example. Spark 3.0 [greatly expanded](https://issues.apache.org/jira/browse/SPARK-26979) the cases where this works. When the string method is not possible, however, we must resort to a more verbose approach.
 
-When using explicit columns as in the first case, both the dataframe name and schema are explicitly bound to the dataframe variable. This means that if `df1` is deleted or renamed, the reference `df1.colA` will break.
+In many situations the first style can be simpler, shorter and visually less polluted. However, we have found that it faces a number of limitations, that lead us to prefer the second style:
 
-By contrast, `F.col('colA')` will always reference a column designated `'colA'` in the dataframe being operated on, named `df`, in this case. It does not require keeping track of other dataframes' states at all, so the code becomes more local and less prone to “spooky interaction at a distance,” which is often challenging to debug.
+- If the dataframe variable name is large, expressions involving it quickly become unwieldy;
+- If the column name has a space or other unsupported character, the bracket operator must be used instead. This generates inconsistency, and `df1['colA']` is just as difficult to write as `F.col('colA')`;
+- Column expressions involving the dataframe aren't reusable and can't be used for defining abstract functions;
+- Renaming a dataframe variable can be error-prone, as all column references must be updated in tandem.
 
-Other reasons to avoid the first case:
+Additionally, the dot syntax encourages use of short and non-descriptive variable names for the dataframes, which we have found to be harmful for maintainability. Remember that dataframes are containers for data, and descriptive names is a helpful way to quickly set expectations about what's contained within. 
 
-* If the dataframe variable name is large, expressions involving it quickly become unwieldy;
-* If the column name has a space or other unsupported character that requires access by the bracket
-operator then `df1['colA']` is just as difficult to write as `F.col('colA')`;
-* Assigning an abstract expression like `F.col('prod_status') == 'Delivered'` to a variable makes it reusable
-for multiple dataframes, while `df.prod_status == 'Delivered'` is always bound to df
-
-Fortunately, a convoluted expression with `F.col()` is usually not required. [Prior to Spark 3.0](https://issues.apache.org/jira/browse/SPARK-26979), this was necessary for some functions, like `F.upper()`, but since then the API has become much more uniform.
+By contrast, `F.col('colA')` will always reference a column designated `colA` in the dataframe being operated on, named `df`, in this case. It does not require keeping track of other dataframes' states at all, so the code becomes more local and less susceptible to "spooky interaction at a distance," which is often challenging to debug.
 
 ### Caveats
 
