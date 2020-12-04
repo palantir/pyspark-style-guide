@@ -292,11 +292,10 @@ As a last word about joins, don't use `.dropDuplicates()` or `.distinct()` as a 
 Always specify an explicit frame when using window functions, using either [row frames](https://spark.apache.org/docs/3.0.1/api/java/org/apache/spark/sql/expressions/WindowSpec.html#rowsBetween-long-long-) or [range frames](https://spark.apache.org/docs/3.0.1/api/java/org/apache/spark/sql/expressions/WindowSpec.html#rangeBetween-long-long-). If you do not specify a frame, Spark will generate one, in a way that might not be easy to predict. In particular, the generated frame will change depending on whether the window is ordered (see [here](https://github.com/apache/spark/blob/v3.0.1/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala#L2899)). To see how this can be confusing, consider the following example:
 
 ```python
-import pyspark.sql.functions as F
-from pyspark.sql import Window
+from pyspark.sql import functions as F, Window as W
 df = spark.createDataFrame([('a', 1), ('a', 2), ('a', 3), ('a', 4)], ['key', 'num'])
-w1 = Window.partitionBy('key')
-w2 = Window.partitionBy('key').orderBy('num')
+w1 = W.partitionBy('key')
+w2 = W.partitionBy('key').orderBy('num')
  
 df.select('key', F.sum('num').over(w1).alias('sum')).collect()
 # => [Row(key=u'a', sum=10), Row(key=u'a', sum=10), Row(key=u'a', sum=10), Row(key=u'a', sum=10)]
@@ -308,8 +307,8 @@ df.select('key', F.sum('num').over(w2).alias('sum')).collect()
 It is much safer to always specify an explicit frame:
 ```python
 df = spark.createDataFrame([('a', 1), ('a', 2), ('a', 3), ('a', 4)], ['key', 'num'])
-w3 = Window.partitionBy('key').orderBy('num').rowsBetween(Window.unboundedPreceding, 0)
-w4 = Window.partitionBy('key').orderBy('num').rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+w3 = W.partitionBy('key').orderBy('num').rowsBetween(W.unboundedPreceding, 0)
+w4 = W.partitionBy('key').orderBy('num').rowsBetween(W.unboundedPreceding, W.unboundedFollowing)
  
 df.select('key', F.sum('num').over(w3).alias('sum')).collect()
 # => [Row(key=u'a', sum=1), Row(key=u'a', sum=3), Row(key=u'a', sum=6), Row(key=u'a', sum=10)]
