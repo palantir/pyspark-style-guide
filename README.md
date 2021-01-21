@@ -491,7 +491,7 @@ The rationale for why we've set these limits on chaining:
 5. Large chains are hard to read and maintain, particularly if chains are nested.
 
 
-# Multi line expressions
+# Multi-line expressions
 
 The reason you can chain expressions is because PySpark was developed from Spark, which comes from JVM languages. This meant some design patterns were transported, specifically chainability. However, Python doesn't support multiline expressions gracefully and the only alternatives are to either provide explicit line breaks, or wrap the expression in parentheses. You only need to provide explicit line breaks if the chain happens at the root node. For example:
 
