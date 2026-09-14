@@ -527,6 +527,88 @@ df = (
 
 
 
+# Type hints for dataframes
+
+PySpark code routinely moves data between three different dataframe types: Spark's own `pyspark.sql.DataFrame`, the pandas-on-Spark `pyspark.pandas.DataFrame`, and a plain local `pandas.DataFrame`. These are unrelated classes with different APIs and very different execution characteristics — a `pandas.DataFrame` has already been collected onto the driver, while the other two are still distributed. An unannotated parameter tells the reader none of this, and tells them nothing about what they are allowed to call on it.
+
+Annotate every function that takes or returns a dataframe, and make the annotation say which of the three it is.
+
+```python
+# bad
+def add_order_total(orders):
+    return orders.pandas_api()
+```
+
+The established aliases already distinguish two of the three: `import pandas as pd` and `import pyspark.pandas as ps`. Import the Spark class directly and let the bare name mean the Spark dataframe, which is what PySpark's own documentation does.
+
+```python
+# good
+import pandas as pd
+import pyspark.pandas as ps
+from pyspark.sql import DataFrame, functions as F
+
+def add_order_total(orders: DataFrame) -> DataFrame:
+    return orders.withColumn('total', F.col('quantity') * F.col('unit_price'))
+
+def to_pandas_on_spark(orders: DataFrame) -> ps.DataFrame:
+    return orders.pandas_api()
+
+def to_pandas(orders: DataFrame) -> pd.DataFrame:
+    return orders.toPandas()
+```
+
+Never import two of them under the bare name `DataFrame`. The second import silently shadows the first, and every annotation in the file then means something other than it appears to.
+
+```python
+# bad
+from pyspark.pandas import DataFrame
+from pyspark.sql import DataFrame
+```
+
+Following item 8 of **Other Considerations and Recommendations**, do not introduce an alias for `pyspark.sql.DataFrame` by default. In a module that genuinely juggles all three flavours the bare name can read as ambiguous, and there it is worth naming each one explicitly. Choose one of the two styles and apply it across the repository rather than switching per file.
+
+```python
+# good - only where a module really does mix flavours
+import pandas as pd
+import pyspark.pandas as ps
+from pyspark.sql import DataFrame as SparkDataFrame
+
+def summarise(orders: SparkDataFrame) -> pd.DataFrame:
+    return orders.toPandas()
+```
+
+Annotate the public class `pyspark.sql.DataFrame`, not the module path it happens to live in (`pyspark.sql.dataframe.DataFrame`). Column expressions extracted as described in **Refactor complex logical operations** are worth annotating too, as `pyspark.sql.Column`:
+
+```python
+# good
+from pyspark.sql import Column, DataFrame, functions as F
+
+def is_delivered() -> Column:
+    return F.col('prod_status') == 'Delivered'
+
+def filter_delivered(orders: DataFrame) -> DataFrame:
+    return orders.filter(is_delivered())
+```
+
+Finally, remember that these annotations describe the *kind* of dataframe and never its schema — `DataFrame` says nothing about which columns exist. Keep using `select` statements to declare the schema contract, as described above.
+
+### Caveats
+
+Annotations are worth type checking, because they catch real mistakes here. The example that prompted this section is one:
+
+```python
+# bad
+def my_function(my_dataframe: DataFrame) -> ps.DataFrame:
+    return my_dataframe.toPandas()
+```
+
+`toPandas()` collects to a local `pandas.DataFrame`, not to a pandas-on-Spark one, so the return type is wrong. Mypy reports it as `Incompatible return value type (got "pandas.core.frame.DataFrame", expected "pyspark.pandas.frame.DataFrame[Any]")`. Use `pandas_api()` if a pandas-on-Spark dataframe is what you actually wanted.
+
+Be aware of Spark Connect. Up to and including Spark 3.5, `pyspark.sql.connect.dataframe.DataFrame` is a separate class that does not inherit from `pyspark.sql.DataFrame`, so under a Connect session a `DataFrame` annotation is inaccurate and `isinstance` checks against it return `False`. Spark 4.0 made both the classic and the Connect dataframe subclasses of `pyspark.sql.DataFrame`, so from that version onwards the annotation is correct for both.
+
+
+
+
 # Other Considerations and Recommendations
 
 1. Be wary of functions that grow too large. As a general rule, a file
